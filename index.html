@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quader aus drei Pyramiden</title>
+<style>
+:root{--bg:#fff;--fg:#1f1e1d;--fg2:#5f5e5a}
+@media (prefers-color-scheme: dark){:root{--bg:#1f1e1d;--fg:#f1efe8;--fg2:#b4b2a9}}
+body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto}
+h1{font-size:22px;font-weight:500;margin:0 0 4px}
+p.sub{margin:0 0 16px;color:var(--fg2);font-size:15px}
+.ctl{display:flex;align-items:center;gap:12px;margin:0 0 6px;font-size:14px;color:var(--fg2)}
+.ctl span.l{min-width:120px}
+.ctl span.v{min-width:52px;color:var(--fg)}
+.chips{display:flex;flex-wrap:wrap;gap:8px 20px;margin:6px 0 0;font-size:14px}
+.chip{display:flex;align-items:center;gap:8px}
+.sw{width:16px;height:16px;border:0.5px solid rgba(0,0,0,.35);display:inline-block}
+.poly{transition:opacity .15s}
+svg{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Quader aus drei Pyramiden</h1>
+<p class="sub">Drei Stufenpyramiden aus Schichten k·(k+1) füllen einen Quader n·(n+1)·(n+2).</p>
+<div class="ctl"><span class="l">n</span><input type="range" id="n" min="1" max="5" value="3" style="flex:0 1 240px"><span class="v" id="nl">n = 3</span></div>
+<div class="ctl"><span class="l">Auseinanderziehen</span><input type="range" id="d" min="0" max="100" value="80" style="flex:0 1 240px"><span class="v" id="dl"></span></div>
+<svg id="s" viewBox="0 0 680 400" role="img" aria-label="Quader der Kantenlängen n, n+1 und n+2, zerlegt in drei Stufenpyramiden"></svg>
+<div class="chips" id="chips"></div>
+</main>
+<script>
+var pal=[['#AFA9EC','#7F77DD','#534AB7'],['#5DCAA5','#1D9E75','#0F6E56'],['#F0997B','#D85A30','#993C1D']];
+var vec=[[0,0,-1],[1,-1,0],[-1,1,0]];
+var DMAX=2.4,W=0.866;
+var N=3,cubes=[];
+function build(n){
+  cubes=[];
+  for(var x=0;x<n;x++)for(var y=0;y<n+1;y++)for(var z=0;z<n+2;z++){
+    var p;
+    if(z<=x&&z<=y)p=0;else if(y<=x&&y<z)p=1;else p=2;
+    cubes.push([x,y,z,p]);
+  }
+}
+function proj(x,y,z){return [(x-y)*W,(x+y)*0.5-z];}
+function bounds(){
+  var b=[1e9,-1e9,1e9,-1e9];
+  [0,1].forEach(function(f){
+    cubes.forEach(function(c){
+      var o=vec[c[3]];
+      for(var i=0;i<8;i++){
+        var q=proj(c[0]+(i&1)+o[0]*DMAX*f,c[1]+((i>>1)&1)+o[1]*DMAX*f,c[2]+((i>>2)&1)+o[2]*DMAX*f);
+        if(q[0]<b[0])b[0]=q[0];if(q[0]>b[1])b[1]=q[0];
+        if(q[1]<b[2])b[2]=q[1];if(q[1]>b[3])b[3]=q[1];
+      }
+    });
+  });
+  return b;
+}
+function render(){
+  var n=N,d=+document.getElementById('d').value/100*DMAX;
+  var b=bounds(),u=Math.min(600/(b[1]-b[0]),370/(b[3]-b[2]));
+  var ox=340-(b[0]+b[1])/2*u,oy=200-(b[2]+b[3])/2*u;
+  function P(x,y,z){var q=proj(x,y,z);return (ox+q[0]*u).toFixed(1)+','+(oy+q[1]*u).toFixed(1);}
+  var list=cubes.map(function(c){
+    var o=vec[c[3]],x=c[0]+o[0]*d,y=c[1]+o[1]*d,z=c[2]+o[2]*d;
+    return [x,y,z,c[3],x+y+z];
+  }).sort(function(a,b){return a[4]-b[4];});
+  var h='',st=' stroke="rgba(0,0,0,.35)" stroke-width="0.5" stroke-linejoin="round"';
+  list.forEach(function(c){
+    var x=c[0],y=c[1],z=c[2],p=c[3],col=pal[p];
+    h+='<polygon class="poly" data-p="'+p+'" points="'+P(x,y,z+1)+' '+P(x+1,y,z+1)+' '+P(x+1,y+1,z+1)+' '+P(x,y+1,z+1)+'" fill="'+col[0]+'"'+st+'/>';
+    h+='<polygon class="poly" data-p="'+p+'" points="'+P(x+1,y,z)+' '+P(x+1,y+1,z)+' '+P(x+1,y+1,z+1)+' '+P(x+1,y,z+1)+'" fill="'+col[1]+'"'+st+'/>';
+    h+='<polygon class="poly" data-p="'+p+'" points="'+P(x,y+1,z)+' '+P(x+1,y+1,z)+' '+P(x+1,y+1,z+1)+' '+P(x,y+1,z+1)+'" fill="'+col[2]+'"'+st+'/>';
+  });
+  var s=document.getElementById('s');
+  s.innerHTML=h;
+  var parts=[],tot=0;
+  for(var k=1;k<=n;k++){parts.push(k+'·'+(k+1));tot+=k*(k+1);}
+  var ch='';
+  for(var p=0;p<3;p++)ch+='<span class="chip" data-p="'+p+'"><span class="sw" style="background:'+pal[p][1]+'"></span>Stück '+(p+1)+': '+parts.join(' + ')+' = '+tot+'</span>';
+  ch+='<span class="chip">Insgesamt: 3 · '+tot+' = '+(3*tot)+' = '+n+'·'+(n+1)+'·'+(n+2)+'</span>';
+  var c=document.getElementById('chips');c.innerHTML=ch;
+  c.querySelectorAll('[data-p]').forEach(function(el){
+    el.addEventListener('mouseenter',function(){
+      var p=el.getAttribute('data-p');
+      s.querySelectorAll('.poly').forEach(function(g){g.style.opacity=g.getAttribute('data-p')===p?1:.12;});
+    });
+    el.addEventListener('mouseleave',function(){
+      s.querySelectorAll('.poly').forEach(function(g){g.style.opacity=1;});
+    });
+  });
+  document.getElementById('nl').textContent='n = '+n;
+  document.getElementById('dl').textContent=Math.round(d/DMAX*100)+' %';
+}
+document.getElementById('n').addEventListener('input',function(e){N=+e.target.value;build(N);render();});
+document.getElementById('d').addEventListener('input',render);
+build(N);render();
+</script>
+</body>
+</html>
